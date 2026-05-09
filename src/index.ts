@@ -23,6 +23,7 @@ import { executeTeamMessage } from "./tools/team-message"
 import { executeTeamBroadcast } from "./tools/team-broadcast"
 import { executeTeamShutdown } from "./tools/team-shutdown"
 import { executeTeamCleanup } from "./tools/team-cleanup"
+import { executeTeamUnarchive } from "./tools/team-unarchive"
 import { executeTeamMerge } from "./tools/team-merge"
 import { executeTeamTasksList } from "./tools/team-tasks-list"
 import { executeTeamTasksAdd } from "./tools/team-tasks-add"
@@ -507,6 +508,18 @@ const plugin: Plugin = async (input) => {
           const result = await executeTeamCleanup(deps, args, ctx.sessionID, undefined, undefined, undefined, config.mergeOnCleanup)
           const blocked = result.includes("uncommitted")
           ctx.metadata({ title: blocked ? "Cleanup blocked — uncommitted changes" : "Team cleaned up" })
+          return result
+        },
+      }),
+
+      team_unarchive: tool({
+        description: "Reactivate an archived team. Restores the team to active status so you can spawn new teammates.",
+        args: {
+          name: tool.schema.string().describe("Name of the archived team to unarchive"),
+        },
+        async execute(args, ctx) {
+          const result = await executeTeamUnarchive(deps, args)
+          ctx.metadata({ title: `Unarchived: ${args.name}` })
           return result
         },
       }),
