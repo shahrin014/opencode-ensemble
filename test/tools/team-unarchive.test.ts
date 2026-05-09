@@ -33,14 +33,16 @@ describe("team_unarchive", () => {
       .rejects.toThrow('not found or not archived')
   })
 
-  test("clears old member records so they can be re-spawned", async () => {
+  test("keeps member records for reuse on spawn", async () => {
     insertTeam(deps.db, "team1", "my-team", "lead-sess", "archived")
     insertMember(deps.db, "team1", "alice", "alice-sess", "shutdown")
 
     await executeTeamUnarchive(deps, { name: "my-team" })
 
-    const members = deps.db.query("SELECT name FROM team_member WHERE team_id = ?").all("team1")
-    expect(members).toHaveLength(0)
+    const members = deps.db.query("SELECT name, status FROM team_member WHERE team_id = ?").all("team1") as Array<{ name: string; status: string }>
+    expect(members).toHaveLength(1)
+    expect(members[0]!.name).toBe("alice")
+    expect(members[0]!.status).toBe("shutdown")
   })
 
   test("updates time_updated when unarchiving", async () => {

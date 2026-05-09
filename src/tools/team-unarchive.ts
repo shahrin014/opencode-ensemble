@@ -17,7 +17,5 @@ export async function executeTeamUnarchive(
 
   deps.db.run("UPDATE team SET status = 'active', time_updated = ? WHERE id = ?", [Date.now(), team.id])
 
-  deps.db.run("DELETE FROM team_member WHERE team_id = ?", [team.id])
-
-  return `Team "${team.name}" unarchived. Old member records cleared — use team_spawn to add new teammates.`
+  return `Team "${team.name}" unarchived. Use team_spawn to add teammates — existing member names can be reused.`
 }

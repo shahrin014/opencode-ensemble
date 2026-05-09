@@ -80,10 +80,14 @@ export async function executeTeamSpawn(
     throw new Error(`Spawn circuit breaker tripped for team "${teamInfo.teamName}": 3 consecutive failures. Last error: ${failures.lastError}. Investigate before retrying — the circuit breaker resets on the next successful spawn.`)
   }
 
-  // Check duplicate name
-  const existing = deps.db.query("SELECT name FROM team_member WHERE team_id = ? AND name = ?")
-    .get(teamInfo.teamId, args.name)
-  if (existing) throw new Error(`Teammate "${args.name}" already exists in team "${teamInfo.teamName}"`)
+  // Check for existing active member with same name
+  const existing = deps.db.query("SELECT name, status FROM team_member WHERE team_id = ? AND name = ?")
+    .get(teamInfo.teamId, args.name) as { name: string; status: string } | null
+  if (existing && existing.status !== "shutdown" && existing.status !== "shutdown_requested") {
+    throw new Error(`Teammate "${args.name}" already exists in team "${teamInfo.teamName}"`)
+  }
+
+  const isReuse = !!existing
 
   const isReadOnly = args.agent === "plan" || args.agent === "explore"
   const useWorktree = args.worktree !== false && !isReadOnly && !isWorktreeDirectory(deps.directory)
@@ -217,11 +221,18 @@ export async function executeTeamSpawn(
   const resolvedModel = resolveModel(args.model, args.agent, memberCount, deps.config)
   if (resolvedModel) log(`spawn:model name=${args.name} model=${resolvedModel}`)
 
-  deps.db.run(
-    `INSERT INTO team_member (team_id, name, session_id, agent, status, execution_status, model, prompt, worktree_dir, worktree_branch, workspace_id, plan_approval, time_created, time_updated)
-     VALUES (?, ?, ?, ?, 'busy', 'starting', ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [teamInfo.teamId, args.name, childSessionId, args.agent, resolvedModel ?? null, args.prompt, worktreeDir, worktreeBranch, workspaceId, planApproval, now, now]
-  )
+  if (isReuse) {
+    deps.db.run(
+      `UPDATE team_member SET session_id = ?, agent = ?, status = 'busy', execution_status = 'starting', model = ?, prompt = ?, worktree_dir = ?, worktree_branch = ?, workspace_id = ?, plan_approval = ?, time_updated = ? WHERE team_id = ? AND name = ?`,
+      [childSessionId, args.agent, resolvedModel ?? null, args.prompt, worktreeDir, worktreeBranch, workspaceId, planApproval, now, teamInfo.teamId, args.name]
+    )
+  } else {
+    deps.db.run(
+      `INSERT INTO team_member (team_id, name, session_id, agent, status, execution_status, model, prompt, worktree_dir, worktree_branch, workspace_id, plan_approval, time_created, time_updated)
+       VALUES (?, ?, ?, ?, 'busy', 'starting', ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [teamInfo.teamId, args.name, childSessionId, args.agent, resolvedModel ?? null, args.prompt, worktreeDir, worktreeBranch, workspaceId, planApproval, now, now]
+    )
+  }
 
   // Register in memory
   deps.registry.register(teamInfo.teamId, args.name, childSessionId)
