@@ -513,7 +513,7 @@ const plugin: Plugin = async (input) => {
       }),
 
       team_unarchive: tool({
-        description: "Reactivate an archived team. Restores the team to active status so you can spawn new teammates.",
+        description: "Reactivate an archived team. Restores the team to active status so you can spawn teammates (existing shutdown members can be reused).",
         args: {
           name: tool.schema.string().describe("Name of the archived team to unarchive"),
         },
