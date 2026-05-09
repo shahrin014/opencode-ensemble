@@ -81,9 +81,9 @@ export async function executeTeamSpawn(
   }
 
   // Check for existing active member with same name
-  const existing = deps.db.query("SELECT name, status FROM team_member WHERE team_id = ? AND name = ?")
-    .get(teamInfo.teamId, args.name) as { name: string; status: string } | null
-  if (existing && existing.status !== "shutdown" && existing.status !== "shutdown_requested") {
+  const existing = deps.db.query("SELECT name, status, session_id FROM team_member WHERE team_id = ? AND name = ?")
+    .get(teamInfo.teamId, args.name) as { name: string; status: string; session_id: string | null } | null
+  if (existing && existing.status !== "shutdown" && existing.status !== "shutdown_requested" && existing.session_id) {
     throw new Error(`Teammate "${args.name}" already exists in team "${teamInfo.teamName}"`)
   }
 
