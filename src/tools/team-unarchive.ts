@@ -17,13 +17,7 @@ export async function executeTeamUnarchive(
 
   deps.db.run("UPDATE team SET status = 'active', time_updated = ? WHERE id = ?", [Date.now(), team.id])
 
-  const members = deps.db.query(
-    "SELECT name, session_id FROM team_member WHERE team_id = ?"
-  ).all(team.id) as Array<{ name: string; session_id: string }>
+  deps.db.run("DELETE FROM team_member WHERE team_id = ?", [team.id])
 
-  for (const m of members) {
-    deps.registry.register(team.id, m.name, m.session_id)
-  }
-
-  return `Team "${team.name}" unarchived. Note: worktrees and sessions from the previous run are gone — use team_spawn to add new teammates.`
+  return `Team "${team.name}" unarchived. Old member records cleared — use team_spawn to add new teammates.`
 }

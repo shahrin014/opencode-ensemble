@@ -33,15 +33,14 @@ describe("team_unarchive", () => {
       .rejects.toThrow('not found or not archived')
   })
 
-  test("re-registers members in the registry after unarchive", async () => {
+  test("clears old member records so they can be re-spawned", async () => {
     insertTeam(deps.db, "team1", "my-team", "lead-sess", "archived")
     insertMember(deps.db, "team1", "alice", "alice-sess", "shutdown")
 
     await executeTeamUnarchive(deps, { name: "my-team" })
 
-    const entry = deps.registry.getByName("team1", "alice")
-    expect(entry).toBeDefined()
-    expect(entry?.sessionId).toBe("alice-sess")
+    const members = deps.db.query("SELECT name FROM team_member WHERE team_id = ?").all("team1")
+    expect(members).toHaveLength(0)
   })
 
   test("updates time_updated when unarchiving", async () => {
